@@ -1,4 +1,4 @@
-# **零资质证明：其在 Solana 上的应用**
+# **零知识证明：其在 Solana 上的应用**
 
 特别感谢 [Matt](https://x.com/__lostin__)、[Porter](https://x.com/portport255)、[Nick](https://x.com/nick_pennie)、[Swen](https://x.com/swen_sjn) 以及 [bl0ckpain](https://x.com/bl0ckpain) 对本系列文章的审阅。
 
