@@ -277,7 +277,7 @@ pub enum VersionedMessage {
 }
 ```
 
-消息版本由序列化过程中第一个比特位决定。如果第一个比特位被设置，那么剩下的7位用于确定序列化的消息版本，从版本0开始。如果第一个比特位没有被设置，那么所有字节用于编码legacy消息格式。这是因为有两个同名的消息结构体`Message`，但它们分属不同的模块—— [legacy](https://docs.rs/solana-sdk/latest/solana_sdk/message/legacy/index.html) 和[v0](https://docs.rs/solana-sdk/latest/solana_sdk/message/v0/index.html)。
+消息版本由序列化过程中第一个比特位决定。如果第一个比特位被设置，那么剩下的7位用于确定序列化的消息版本，从版本0开始。如果第一个比特位没有被设置，那么所有字节用于编码legacy消息格式。这是因为有两个同名的消息结构体`Message`，但它们分属不同的模块—— [legacy](https://docs.rs/solana-sdk/latest/solana_sdk/message/legacy/index.html) 和 [v0](https://docs.rs/solana-sdk/latest/solana_sdk/message/v0/index.html)。
 
 `Message`表示交易的简化内部格式，用于网络传输和运行时处理。它包含了交易指令中使用的所有账户的线性列表、描述账户数组结构的`MessageHeader`、一个最近的区块哈希以及消息指令的紧凑编码。v0消息结构体的结构如下：
 
