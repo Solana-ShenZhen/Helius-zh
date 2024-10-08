@@ -33,7 +33,9 @@
 
 <img src="https://cdn.prod.website-files.com/641ba798c17bb180d832b666/66c852eb875e91095b340aed_AD_4nXdIteAvEIGl6M-AmqIEWZxBlrn_Ce8bTPALZho9Q14lRSbNnSNozfp6zEh5bRPK5NY-7pWGSuOuekJ_33RVb6NqaTUS6TwKMGiVw8p1ob5et_0jF_tQv9YjoKZI1Jg1S-x_5S925xMdZ-V-GTy8WpsPscRP.png" loading="lazy" alt="">
 
-<div style="text-align:center">上图：SFDP 6 月份宣布删除运营商</div>
+<div style="text-align: center;">
+    <p>上图：SFDP 6 月份宣布删除运营商</p>
+</div>
 
 这一行为[得到了](https://www.theblock.co/post/299244/solana-foundation-removes-certain-operators-from-delegation-program-over-malicious-sandwich-attacks)行业媒体的[广泛](https://solanafloor.com/news/solana-foundation-defends-users-against-sandwich-attacks-removes-malicious-validators-from-delegation-program)的[报道](https://cointelegraph.com/news/solana-removes-validators-sandwich-attacks)，随后，大量错误的批评和彻头彻尾的错误信息在网上传播。这一事件暴露了对 SFDP 缺乏正式分析以及该计划对 Solana 验证者环境的积极和消极影响——这是我们希望通过这项工作解决的问题。
 
@@ -83,7 +85,6 @@ _每个纪元的投票费用 = 0.000005 SOL \* 投票数_
 <div style="text-align: center;">
   <img src="https://cdn.prod.website-files.com/641ba798c17bb180d832b666/66c852eadc1e813f5ed73560_AD_4nXenx7i340pBJb8gTpCkwE4RmAGIyd1prA_aCIPlznFYgLBSfIZCP14S4VfL31apvcUP0dnzwFIhAaxHqIONz25AdE5Imyg_MQAUi7rOfUOGF8ofjHxF4Q2rEONih4IwDe7mYYr7k46SosdOQItrvpvIxTg1.png" alt="">
 </div>
-<div style="text-align:center">上图：SFDP 6 月份宣布删除运营商</div>
 
 ### 收入
 
@@ -137,7 +138,7 @@ MEV 是一个复杂的话题。请阅读我们之前的 Helius 博客[文章](ht
 
 <img src="https://cdn.prod.website-files.com/641ba798c17bb180d832b666/66c852ea241e3c15ea0c7827_AD_4nXcGhLWWtDpzjpfo8qg8-ybvDMIh3HHafZKiut55aJi6lmb_KHeXhjCHmYyH2J4IYtDUuMtd6ANvNLR7nVx-wR7enjcWaAK-2qZfErYBe35Yx212gmCYjOJK1ycHvpuw-X-3lTJnHc-6s2Vx6An8dzDK-nw4.png" loading="lazy" alt="">
 
-<div style="text-align:center">上图：所有验证者运营收入来源都根据权益而变化。不包括“其他的”。</div>
+<div style="text-align: center;">上图：所有验证者运营收入来源都根据权益而变化。不包括"其他的"。</div>
 
 ### **间接动机**
 
