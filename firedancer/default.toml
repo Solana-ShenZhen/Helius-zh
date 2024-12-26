@@ -1,0 +1,1256 @@
+# 此 Firedancer 实例的名称。该名称作为唯一标识符，
+# 使多个 Firedancer 实例可以并行运行而不会在需要共享系统或内核命名空间时发生冲突。
+# 启动 Firedancer 实例时，它可能会加载、重置或覆盖由具有相同名称的
+# 先前或当前运行的实例创建的任何状态。
+name = "fd1"
+
+# 用于设置数据权限和运行 Firedancer 的操作系统用户。
+# Firedancer 需要以特权方式启动，可以是各种能力或 root 权限，
+# 以便配置内核旁路网络。完成配置后，进程将进入高度受限的沙箱，
+# 放弃所有特权，并切换到此处指定的用户。在运行 `fdctl configure` 
+# 配置步骤时，数据权限将设置为该用户可写，而不是执行配置的用户可写。
+#
+# Firedancer 对此用户没有任何要求，应该尽可能限制其权限。建议让
+# Firedancer 使用与机器上其他进程不同的用户运行，这样其他进程就
+# 无法尝试发送信号、ptrace 或以其他方式干扰该进程。在任何情况下
+# 都不应使用超级用户或特权用户，Firedancer 也不允许使用 root 用户。
+# 使用有权访问 `sudo` 或在 sudoers 文件中有其他条目的用户也不是
+# 一个好主意。
+#
+# 如果未提供用户，Firedancer 将自动确定要运行的用户。默认情况下，
+# 用户通过以下顺序确定：
+#
+#  1. 按顺序检查 `SUDO_USER`、`LOGNAME`、`USER`、`LNAME` 或
+#     `USERNAME` 环境变量，如果其中一个已设置，则使用该用户
+#  2. 使用 `/proc/self/loginid` 文件确定 UID，并在 nss（名称
+#     服务切换）中查找用户名。
+#
+# 这意味着如果使用 sudo 运行，用户将是调用 sudo 的终端用户，而不是
+# root 用户。
+user = ""
+
+# 用于放置设置和运行期间使用的临时文件的绝对目录路径。
+# 默认情况下，账本和账户数据库也会放在这里，但可以通过
+# 其他选项进行覆盖。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为
+# 运行 Firedancer 的用户（如上所述），而 "{name}" 将被替换为
+# Firedancer 实例的名称。
+scratch_directory = "/home/{user}/.firedancer/{name}"
+
+# 用于各种传入网络监听器的端口范围，格式为 `<MIN_PORT>-<MAX_PORT>`（包含边界）。
+# 使用的范围包括最小值但不包括最大值 [min, max)。这些端口用于接收来自客户端
+# 和其他验证节点的交易和投票。
+#
+# 对于 Firedancer，端口在此配置文件的后续部分中静态分配，此选项将通过
+# `--dynamic-port-range` 参数传递给 Agave 客户端。Agave 将使用此范围
+# 来确定尚未作为 Firedancer 一部分重写的服务的端口位置，包括 gossip 和 RPC。
+# 此端口范围不应与下面 Firedancer 使用的任何静态端口重叠。
+dynamic_port_range = "8900-9000"
+
+# Firedancer 默认记录日志到两个位置：stderr 和日志文件。
+# stdout 不用于日志记录，仅用于打印命令输出或启动错误。
+# 发送到 "stderr" 的消息是简短的，不如日志文件中的详细。
+# 日志文件用于长期存档目的。日志级别与 Linux syslog 级别
+# 一致，从低优先级到高优先级依次为：
+#
+#   - DEBUG    开发和诊断消息。
+#   - INFO     次要的信息通知。
+#   - NOTICE   重要的信息通知。
+#   - WARNING  意外情况，不应该发生。需要调查。
+#   - ERR      终止 Firedancer。常规错误，可能是程序员错误。
+#   - CRIT     终止 Firedancer。严重错误。
+#   - ALERT    终止 Firedancer。需要立即关注的警报。
+#   - EMERG    终止 Firedancer。需要立即关注的紧急情况，
+#              安全或风险问题。
+#
+# 默认行为是：
+#
+#   - DEBUG 消息不会写入任何流。
+#   - INFO 消息以详细形式写入日志文件。
+#   - NOTICE 是 INFO + 以摘要形式写入 stderr 的消息。
+#   - WARNING 是 NOTICE + 日志文件刷新到磁盘。
+#   - ERR 及以上是 WARNING + 程序将以错误代码 1 退出。
+#
+# Firedancer 中的所有进程共享一个日志文件，它们都从启动器
+# 继承 STDERR 和 STDOUT。临时日志（stderr）的示例日志消息
+# 如下所示：
+#
+#    NOTICE  01-23 04:56:07.890123 45678 f0 0 src/file.c(901): 1 is the loneliest number
+#
+# 永久日志（日志文件）的示例如下：
+#
+#    NOTICE  2023-01-23 04:56:07.890123456 GMT-06 45678:45678 user:host:f0 app:thread:0 src/file.c(901)[func]: 1 is the loneliest number
+#
+[log]
+# 日志文件的绝对路径。如果文件已存在，新的日志将追加到文件末尾；
+# 如果文件不存在，将创建新文件。简短的临时日志将始终写入 stderr。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为
+# 运行 Firedancer 的用户（如上所述），而 "{name}" 将被替换为
+# Firedancer 实例的名称。
+#
+# 如果未提供路径，默认会在 /tmp 目录下创建一个唯一名称的日志文件。
+# 如果指定为 "-"，永久日志将写入 stdout。
+path = ""
+
+# Firedancer 可以使用 ANSI 转义码为 stderr 临时日志添加颜色，
+# 使其在终端中看起来更美观。此选项必须是 "auto"、"true" 或
+# "false" 之一。如果设置为 "auto"，当检测到终端支持颜色时，
+# stderr 输出将会着色。日志文件输出永远不会着色。
+colorize = "auto"
+
+# The minimum log level which will be written to the log file.  Log
+# levels lower than this will be skipped.  Must be one of the levels
+# described above.
+level_logfile = "INFO"
+
+# The minimum log level which will be written to stderr.  Log levels
+# lower than this will be skipped.  Must be one of the levels
+# described above.  This should be at least the same as the level
+# for the log file.
+level_stderr = "NOTICE"
+
+# The minimum log level which will immediately flush the log file to
+# disk.  Must be one of the levels described above.
+level_flush = "WARNING"
+
+# 客户端支持向远程服务器发送健康报告以及性能和诊断信息，用于收集和分析。
+# 这些报告为 Solana 验证节点仪表板提供支持，开发人员经常使用它来监控网络健康状况。
+[reporting]
+# 指定用于报告诊断事件数据的指标环境字符串。公共集群的选项
+# 在 https://docs.solanalabs.com/clusters/available 中有描述，
+# 包括：
+#
+# mainnet-beta:
+#   "host=https://metrics.solana.com:8086,db=mainnet-beta,u=mainnet-beta_write,p=password"
+#
+# devnet:
+#   "host=https://metrics.solana.com:8086,db=devnet,u=scratch_writer,p=topsecret"
+#
+# testnet:
+#   "host=https://metrics.solana.com:8086,db=tds,u=testnet_write,p=c4fa841aa918bf8274e3e2a44d77568d9861b3ea"
+#
+# 如果此处未提供选项，事件报告将被禁用。
+#
+# 此字符串将通过 `SOLANA_METRICS_CONFIG` 环境变量传递给 Agave 客户端。
+solana_metrics_config = ""
+
+# 账本是一组可以重放以恢复到链当前状态的信息。在 Solana 中，它被视为
+# 创世区块和最近未确认区块的组合。账户数据库（所有账户的当前余额）是
+# 从账本中派生出来的信息。
+[ledger]
+# 账本的绝对目录路径。Firedancer 目前会生成一个 Agave 验证节点来
+# 执行接收到的交易。如果未提供账本路径，将默认使用上述临时目录下的
+# `ledger` 子目录。
+#
+# 此字符串会进行两次替换。如果存在 "{user}"，它将被替换为运行
+# Firedancer 的用户名（如上所述），而 "{name}" 将被替换为
+# Firedancer 实例的名称。
+#
+# 这里构造的账本路径将通过 `--ledger` 参数传递给 Agave 客户端。
+path = ""
+
+# 用于放置账户数据库的绝对目录路径。如果为空，将默认使用上述账本
+# `path` 的 `accounts` 子目录。此选项通过 `--accounts` 参数传递给
+# Agave 客户端。
+accounts_path = ""
+
+# 在丢弃之前要在账本根槽中保留的最大分片数量。
+#
+# 默认值的选择是为了让验证节点有足够的时间从对等节点下载快照并从中启动，
+# 并确保如果验证节点需要从自己的快照重新启动，它在本地有足够的槽来追赶
+# 到停止时的位置。这大约需要 400GB 的空间。
+#
+# 此选项通过 `--limit-ledger-size` 参数传递给 Agave 客户端。
+limit_size = 200_000_000
+
+# 如果非空，则启用按指定字段索引的账户索引。账户字段必须是
+# "program-id"、"spl-token-owner" 或 "spl-token-mint" 之一。
+# 这些选项通过 `--account-index` 参数传递给 Agave 客户端。
+account_indexes = []
+
+# 如果启用了账户索引，从索引中排除这些密钥。
+# 这些选项通过 `--account-index-exclude-key` 参数传递给 Agave 客户端。
+account_index_exclude_keys = []
+
+# 如果启用了账户索引，则仅在索引中包含这些密钥。如果指定了此选项，
+# 它将覆盖 `account_index_exclude_keys` 并忽略该值。这些选项通过
+# `--account-index-include-key` 参数传递给 Agave 客户端。
+account_index_include_keys = []
+
+# 是否在存储快照时使用压缩。此选项通过 `--snapshot-archive-format` 
+# 参数传递给 Agave 客户端。
+snapshot_archive_format = "zstd"
+
+# 如果未找到已保存的 tower 状态，则拒绝启动。此选项通过
+# `--require-tower` 参数传递给 Agave 客户端。
+require_tower = false
+
+[gossip]
+# 用于与 gossip 集群会合的可路由 DNS 名称或 IP 地址和端口号。
+# 这些入口点通过 `--entrypoint` 参数传递给 Agave 客户端。
+entrypoints = []
+
+# 如果为 true，则在启动时检查至少有一个提供的入口点可以在所有必要的
+# 端口上连接到此验证节点。如果无法连接，验证节点将退出。f
+#
+# 此选项通过 `--no-port-check` 参数以相反的形式传递给 Agave 客户端。
+port_check = true
+
+# 用于接收此验证节点上 gossip 消息的端口号。此选项通过 `--gossip-port` 
+# 参数传递给 Agave 客户端。此参数是必需的。虽然 Agave 将其视为可选参数，
+# 但尝试查找默认值的代码总是会失败。
+port = 8001
+
+# 要在 gossip 中向网络广播的 DNS 名称或 IP 地址。如果未提供，
+# 默认会询问第一个响应上述端口检查的入口点我们的 IP 地址是什么。
+# 如果未指定入口点，则默认为 127.0.0.1。如果连接到主网或测试网等
+# 公共集群，此 IP 必须可从外部解析，并且不应在本地子网上。
+#
+# 此选项通过 `--gossip-host` 参数传递给 Agave 客户端。
+host = ""
+
+[rpc]
+# 如果非零，则在此端口上启用 JSON RPC，并使用下一个端口作为 RPC websocket。
+# 如果为零，则禁用 JSON RPC。此选项通过 `--rpc-port` 参数传递给 Agave 客户端。
+port = 0
+
+# 如果为 true，则在此验证节点上启用所有 RPC 操作，包括用于查询链状态和
+# 交易历史的非默认 RPC 方法。此选项通过 `--full-rpc-api` 参数传递给
+# Agave 客户端。
+full_api = false
+
+# 如果 RPC 是私有的，验证节点的开放 RPC 端口将不会在 `solana gossip` 
+# 命令中发布供其他人使用。此选项通过 `--private-rpc` 参数传递给
+# Agave 客户端。
+private = false
+
+# 通过 JSON RPC 启用历史交易信息，包括 `getConfirmedBlock` API。
+# 这将导致磁盘使用量和 IOPS 增加。此选项通过
+# `--enable-rpc-transaction-history` 参数传递给 Agave 客户端。
+transaction_history = false
+
+# 如果启用，在存储的历史交易信息中包含 CPI 内部指令、日志和返回数据。
+# 此选项通过 `--enable-extended-tx-metadata-storage` 参数传递给
+# Agave 客户端。
+extended_tx_metadata_storage = false
+
+# 如果为 true，则仅使用已知验证节点的 RPC 服务。此选项通过
+# `--only-known-rpc` 参数传递给 Agave 客户端。
+only_known = true
+
+# 如果为 true，则启用不稳定的 RPC PubSub `blockSubscribe` 订阅。
+# 此选项通过 `--rpc-pubsub-enable-block-subscription` 参数传递给
+# Agave 客户端。
+pubsub_enable_block_subscription = false
+
+# 如果为 true，则启用不稳定的 RPC PubSub `voteSubscribe` 订阅。
+# 此选项通过 `--rpc-pubsub-enable-vote-subscription` 参数传递给
+# Agave 客户端。
+pubsub_enable_vote_subscription = false
+
+# 如果启用，在服务 RPC 请求时，将使用 BigTable 实例作为本地账本数据的
+# 备用来源来获取历史交易信息。必须设置 `GOOGLE_APPLICATION_CREDENTIALS` 
+# 环境变量才能访问 BigTable。
+#
+# 此选项通过 `--enable-rpc-bigtable-ledger-storage` 参数传递给
+# Agave 客户端。
+bigtable_ledger_storage = false
+
+# Agave 客户端会定期获取并存储链状态的快照。其他客户端，
+# 特别是在引导或追赶链头时，可能会请求快照。
+[snapshots]
+# 通过设置此标志启用增量快照。此选项通过 `--no-incremental-snapshots` 
+# 参数（取反）传递给 Agave 客户端。
+incremental_snapshots = true
+
+# 设置完整快照的生成频率，以插槽为单位，在生产链上一个插槽大约为 400ms。
+# 建议保持默认值或设置为与已知验证节点相同的值。
+full_snapshot_interval_slots = 25000
+
+# 设置增量快照的生成频率，以插槽为单位。必须是账户哈希间隔的倍数
+# （默认为 100）。
+incremental_snapshot_interval_slots = 100
+
+# 设置清理旧快照时要保留的完整快照存档的最大数量。此选项通过
+# `--maximum-full-snapshots-to-retain` 参数传递给 Agave 客户端。
+maximum_full_snapshots_to_retain = 2
+
+# 设置清理旧快照时要保留的增量快照存档的最大数量。此选项通过
+# `--maximum-incremental-snapshots-to-retain` 参数传递给 Agave 客户端。
+maximum_incremental_snapshots_to_retain = 4
+
+# 设置快照下载的最小速度，单位为字节/秒。如果初始下载速度
+# 低于此阈值，验证节点将尝试从其他 RPC 节点重新下载。
+#
+# 默认值为 10MB/s。此选项通过 `--minimum-snapshot-download-speed` 
+# 参数传递给 Agave 客户端。
+minimum_snapshot_download_speed = 10485760
+
+# 用于存储快照的绝对目录路径。如果未提供路径，则默认使用
+# 上面的 [ledger.path] 选项。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为
+# 运行 Firedancer 的用户（如上所述），而 "{name}" 将被替换为
+# Firedancer 实例的名称。
+#
+# 此处构建的快照路径通过 `--snapshots` 参数传递给 Agave 客户端。
+path = ""
+
+# 用于存储增量快照的绝对目录路径。如果未提供路径，则默认使用
+# 上面的 [snapshots.path] 选项，如果该选项也未提供，则使用
+# 上面的 [ledger.path] 选项。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为
+# 运行 Firedancer 的用户（如上所述），而 "{name}" 将被替换为
+# Firedancer 实例的名称。
+#
+# 此处构建的快照路径通过 `--incremental-snapshot-archive-path` 
+# 参数传递给 Agave 客户端。
+incremental_path = ""
+
+[consensus]
+# 包含验证节点身份的 `keypair.json` 文件的绝对路径。在连接到开发网、
+# 测试网或主网时，必须提供身份文件。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为运行 
+# Firedancer 的用户（如上所述），而 "{name}" 将被替换为 Firedancer 
+# 实例的名称。
+#
+# 在运行本地集群时，如果未提供密钥对（或尚未生成），Firedancer 将
+# 生成一个密钥对，并将其放在临时目录下的 `identity.json` 路径中。
+#
+# 此选项通过 `--identity` 参数传递给 Agave 客户端。
+identity_path = ""
+
+# 包含验证节点投票账户身份的 `keypair.json` 文件的绝对路径。如果未提供
+# 投票账户，投票功能将被禁用，验证节点将不会投出任何票。
+#
+# 此字符串将进行两次替换。如果存在 "{user}"，它将被替换为运行 
+# Firedancer 的用户（如上所述），而 "{name}" 将被替换为 Firedancer 
+# 实例的名称。
+#
+# 此选项通过 `--vote-account` 参数传递给 Agave 客户端。
+vote_account_path = ""
+
+# List of absolute paths to authorized-voter keypairs for the vote
+# account.  This is not needed if no vote account is specified.
+# If a vote account is specified and this is empty, the identity
+# account will be used as the authorized-voter account.
+#
+# Two substitutions will be performed on each string in this list.
+# If "{user}" is present it will be replaced with the user running
+# Firedancer, as above, and "{name}" will be replaced with the
+# name of the Firedancer instance.
+#
+# These options are passed to the Agave client with the
+# `--authorized-voter` argument.
+authorized_voter_paths = []
+
+# If false, do not attempt to fetch a snapshot from the cluster,
+# instead start from a local snapshot if one is present.  A snapshot
+# is required to run the validator, so either one must be present,
+# or you need to fetch it.  The snapshot will be fetched from a
+# validator in the list of entrypoints.  If no validators are listed
+# there, starting the validator will fail.  This option is passed
+# (inverted) to the Agave client with the `no-snapshot-fetch`
+# argument.
+snapshot_fetch = true
+
+# If false, do not attempt to fetch the genesis from the cluster.
+# This option is passed (inverted) to the Agave client with
+# the `no-genesis-fetch` argument.
+genesis_fetch = true
+
+# On startup, do some simulations to see how fast the validator can
+# generate proof of history, and if it too slow to keep up with the
+# network, exit out during boot.  It is recommended to leave this on
+# to ensure you can keep up with the network.  This option is passed
+# to the Agave client (inverted) with the
+# `--no-poh-speed-test` argument.
+poh_speed_test = true
+
+# If set, require the genesis block to have the given hash.  If it
+# does not the validator will abort with an error.  This option is
+# passed to the Agave client with the
+# `--expected-genesis-hash` argument.
+expected_genesis_hash = ""
+
+# If nonzero, after processing the ledger, and the next slot is the
+# provided value, wait until a supermajority of stake is visible on
+# gossip before starting proof of history.  This option is passed to
+# the Agave client with the `--wait-for-supermajority`
+# argument.
+wait_for_supermajority_at_slot = 0
+
+# If there is a hard fork, it might be required to provide an
+# expected bank hash to ensure the correct fork is being selected.
+# If this is not provided, or we are not waiting for a
+# supermajority, the bank hash is not checked.  Otherwise we require
+# the bank at the supermajority slot to have this hash.  This option
+# is passed to the Agave client with the
+# `--expected-bank-hash` argument.
+expected_bank_hash = ""
+
+# The shred version is a small hash of the genesis block and any
+# subsequent hard forks.  The Agave client uses it to filter
+# out any shred traffic from validators that disagree with this
+# validator on the genesis hash or the set of hard forks.  If
+# nonzero, ignore any shreds that have a different shred version
+# than this value.  If zero, the expected shred version is
+# automatically determined by copying the shred version that the
+# entrypoint validator is using.  This option is passed to the
+# Agave client with the `--expected-shred-version` argument.
+expected_shred_version = 0
+
+# If the validator starts up with no ledger, it will wait to start
+# block production until it sees a vote land in a rooted slot.  This
+# prevents double signing.  Turn off to risk double signing a block.
+# This option is passed to the Agave client (inverted) with
+# the `--no-wait-for-vote-to-start-leader` argument.
+wait_for_vote_to_start_leader = true
+
+# Perform a network speed test on starting up the validator.  If
+# this is not disabled, and the speed test fails, the validator will
+# refuse to start.  This option is passed to the Agave client
+# (inverted) with the `--no-os-network-limits-test` argument.
+os_network_limits_test = true
+
+# If nonempty, add a hard fork at each of the provided slots.  These
+# options are passed to the Agave client with the
+# `--hard-fork` argument.
+hard_fork_at_slots = []
+
+# A set of validators we trust to publish snapshots.  If a snapshot
+# is not published by a validator with one of these keys, it is
+# ignored.  If no known validators are specified, any hash will be
+# accepted.  These options are passed to the Agave client with
+# the `--trusted-validator` argument.
+known_validators = []
+
+# CPU cores in Firedancer are carefully managed.  Where a typical
+# program lets the operating system scheduler determine which threads to
+# run on which cores and for how long, Firedancer overrides most of this
+# behavior by pinning threads to CPU cores.
+#
+# The validator splits all work into eleven distinct jobs, with each
+# thread running one of the jobs:
+#
+#  - net        Sends and receives network packets from the network
+#               device
+#
+#  - quic       Receives transactions from clients, performing all
+#               connection management and packet processing to manage
+#               and implement the QUIC protocol
+#
+#  - verify     Verifies the cryptographic signature of incoming
+#               transactions, filtering invalid ones
+#
+#  - dedup      Checks for and filters out duplicated incoming
+#               transactions
+#
+#  - pack       Collects incoming transactions and smartly schedules
+#               them for execution when we are leader
+#
+#  - bank       Executes transactions that have been scheduled when we
+#               are leader
+#
+#  - poh        Continuously hashes in the background, and mixes the
+#               hash in with executed transactions to prove passage of
+#               time
+#
+#  - shred      Distributes block data to the network when leader, and
+#               receives and retransmits block data when not leader
+#
+#  - store      Receives block data when we are leader, or from other
+#               nodes when they are leader, and stores it locally in a
+#               database on disk
+#
+#  - metric     Collects monitoring information about other tiles and
+#               serves it on a HTTP endpoint
+#
+#  - sign       Holds the validator private key, and receives and
+#               responds to signing requests from other tiles
+#
+# The jobs involved in producing blocks when we are leader are organized
+# in a pipeline, where transactions flow through the system in a linear
+# sequence.
+#
+#   net -> quic -> verify -> dedup -> pack -> bank -> poh -> shred -> store
+#
+# Some of these jobs (net, quic, verify, bank, and shred) can be
+# parallelized, and run on multiple CPU cores at once. For example, we
+# could structure the pipeline like this for performance:
+#
+# net -> quic +-> verify -+> dedup -> pack +-> bank -+> poh -> shred -> store
+#             +-> verify -+                +-> bank -+
+#             +-> verify -+
+#             +-> verify -+
+#
+# Each instance of a job running on a CPU core is called a tile.  In
+# this configuration we are running 4 verify tiles and 2 bank tiles.
+#
+# The problem of deciding which cores to use, and what job to run on
+# each core we call layout.  Layout is system dependent and the highest
+# throughput layout will vary depending on the specific hardware
+# available.
+#
+# Tiles communciate with each other using message queues.  If a queue
+# between two tiles fills up, the producer will either block, waiting
+# until there is free space to continue which is referred to as
+# backpressure, or it will drop transactions or data and continue.
+#
+# A slow tile can cause backpressure through the rest of the system
+# causing it to halt, and the goal of adding more tiles is to increase
+# throughput of a job, preventing dropped transactions.  For example,
+# if the QUIC server was producing 100,000 transactions a second, but
+# each verify tile could only handle 20,000 transactions a second, five
+# of the verify tiles would be needed to keep up without dropping
+# transactions.
+#
+# A full Firedancer layout spins up these eleven tasks onto a variety of
+# CPU cores and connects them together with queues so that data can flow
+# in and out of the system with maximum throughput and minimal drops.
+[layout]
+# Logical CPU cores to run Firedancer tiles on.  Can be specified as
+# a single core like "0", a range like "0-10", or a range with
+# stride like "0-10/2".  Stride is useful when CPU cores should be
+# skipped due to hyperthreading.  You can also have a number
+# preceded by a 'f' like 'f5' which means the next five tiles are
+# not pinned and will float on the original core set that Firedancer
+# was started with.
+#
+# For example, if Firedancer has six tiles numbered 0..5, and the
+# affinity is specified as
+#
+#  f1,0-1,2-4/2,f1
+#
+# Then the tile to core mapping looks like,
+#
+# tile | core
+# -----+-----
+#    0 | floating
+#    1 | 0
+#    2 | 1
+#    3 | 2
+#    4 | 4
+#    5 | floating
+#
+# If the value is specified as auto, Firedancer will attempt to
+# determine the best layout for the system.  This is the default
+# value although for best performance it is recommended to specify
+# the layout manually.  If the layout is specified as auto, the
+# agave_affinity below must also be set to auto.
+affinity = "auto"
+
+# In addition to the Firedancer tiles which use a core each, the
+# current version of Firedancer hosts a Agave validator as
+# a subprocess.
+#
+# This affinity controls which logical CPU cores the Agave
+# subprocess and all of its threads are allowed to run on.  This is
+# specified in the same format as the above Firedancer affinity.
+#
+# It is strongly suggested that you do not overlap the Firedancer
+# affinity with the Agave affinity, as Firedancer tiles expect
+# to have exclusive use of their core.  Unexpected latency spikes
+# due to context switching may decrease performance overall.
+#
+# If the value is specified as "auto", the [layout.affinity] field
+# must also be set to "auto", and the Agave affinity will be
+# determined automatically as well.
+agave_affinity = "auto"
+
+# How many net tiles to run.  Should be set to 1.  This is
+# configurable and designed to scale out for future network
+# conditions but there is no need to run more than 1 net tile given
+# current `mainnet-beta` conditions.
+#
+# Net tiles are responsible for sending and receiving packets from
+# the network device configured in the [tiles.net] section below.
+# Each net tile will service exactly one queue from the device, and
+# firedancer will error on boot if the number of queues on the
+# device is not configured correctly.
+#
+# The net tile is designed to scale linearly when adding more tiles.
+#
+# See the comments for the [tiles.net] section below for more
+# information.
+net_tile_count = 1
+
+# How many QUIC tiles to run.  Should be set to 1.  This is
+# configurable and designed to scale out for future network
+# conditions but there is no need to run more then 1 QUIC tile given
+# current `mainnet-beta` conditions, unless the validator is the
+# subject of an attack.
+#
+# QUIC tiles are responsible for parsing incoming QUIC protocol
+# messages, managing connections and responding to clients.
+# Connections from the net tiles will be evenly distributed
+# between the available QUIC tiles round robin style.
+#
+# QUIC tiles are designed to scale linearly when adding more tiles,
+quic_tile_count = 1
+
+# How many resolver tiles to run.  Should be set to 1.  This is
+# configurable and designed to scale out for future network
+# conditions but there is no need to run more than 1 resolver tile
+# given current `mainnet-beta` conditions, unless the validator is
+# under a DoS or spam attack.
+#
+# Resolve tiles are responsible for resolving address lookup tables
+# before transactions are scheduled.
+resolv_tile_count = 1
+
+# How many verify tiles to run.  Verify tiles perform signature
+# verification on incoming transactions, an expensive operation that
+# is often the bottleneck of the validator.
+#
+# Verify tiles are designed to scale linearly when adding more
+# tiles, and the verify tile count should be increased until the
+# validator is not dropping incoming QUIC transactions from clients.
+#
+# On modern hardware, each verify tile can handle around 20-40K
+# transactions per second.  Six tiles seems to be enough to handle
+# current `mainnet-beta` traffic, unless the validator is under a
+# denial of service or spam attack.
+verify_tile_count = 6
+
+# How many bank tiles to run.  Should be set to 4.  Bank tiles
+# execute transactions, so the validator can include the results of
+# the transaction into a block when we are leader.  Because of
+# current consensus limits restricting blocks to around 32,000
+# transactions per block, there is no need to use more than 4 bank
+# tiles on mainnet-beta.  For development and benchmarking, it can
+# be useful to increase this number further.
+#
+# Bank tiles do not scale linearly.  The current implementation uses
+# the agave runtime for execution, which takes various locks and
+# uses concurrent data structures which slow down with multiple
+# parallel users.
+bank_tile_count = 4
+
+# How many shred tiles to run.  Should be set to 1.  This is
+# configurable and designed to scale out for future network
+# conditions but there is no need to run more than 1 shred tile
+# given current `mainnet-beta` conditions.  There is however
+# a need to run 2 shred tiles under current `testnet` conditions.
+#
+# Shred tiles distribute block data to the network when we are
+# leader, and receive and retransmit it to other nodes when we are
+# not leader.
+#
+# Shred tile performance heavily dependent on the number of peer
+# nodes in the cluster, as computing where data should go is an
+# expensive function with this list of peers as the input.  In
+# development and benchmarking, 1 tile is also sufficient to hit
+# very high TPS rates because the cluster size will be very small.
+shred_tile_count = 1
+
+# All memory that will be used in Firedancer is pre-allocated in two
+# kinds of pages: huge and gigantic.  Huge pages are 2MB and gigantic
+# pages are 1GB.  This is done to prevent TLB misses which can have a
+# high performance cost.  There are three important steps in this
+# configuration,
+#
+#  1. At boot time or soon after, the kernel is told to allocate a
+#     certain number of both huge and gigantic pages to a special pool
+#     so that they are reserved for later use by privileged programs.
+#
+#  2. At configuration time, one (pseudo) filesystem of type hugetlbfs
+#     for each of huge and gigantic pages is mounted on a local
+#     directory.  Any file created within these filesystems will be
+#     backed by in-memory pages of the desired size.
+#
+#  3. At Firedancer initialization time, Firedancer creates a
+#     "workspace" file in one of these mounts.  The workspace is a
+#     single mapped memory region within which the program lays out and
+#     initializes all of the data structures it will need in advance.
+#     Most Firedancer allocations occur at initialization time, and this
+#     memory is fully managed by special purpose allocators.
+#
+# A typical layout of the mounts looks as follows,
+#
+#  /mnt/.fd                     [Mount parent directory specified below]
+#    +-- .gigantic              [Files created in this mount use 1GiB
+#                                pages]
+#        +-- firedancer1.wksp
+#    +-- .huge                  [Files created in this mount use 2MiB
+#                                pages]
+#        +-- scratch1.wksp
+#        +-- scratch2.wksp
+[hugetlbfs]
+# The absolute path to a directory in the filesystem.  Firedancer
+# will mount the hugetlbfs filesystem for gigantic pages at a
+# subdirectory named .gigantic under this path, or if the entire
+# path already exists, will use it as-is.  Firedancer will also
+# mount the hugetlbfs filesystem for huge pages at a subdirectory
+# named .huge under this path, or if the entire path already exists,
+# will use it as-is.  If the mount already exists it should be
+# writable by the Firedancer user.
+mount_path = "/mnt/.fd"
+
+# Tiles are described in detail in the layout section above.  While the
+# layout configuration determines how many of each tile to place on
+# which CPU core to create a functioning system, below is the individual
+# settings that can change behavior of the tiles.
+[tiles]
+# A networking tile is responsible for sending and receiving packets
+# on the network.  Each networking tile is bound to a specific
+# queue on a network device.  For example, if you have one network
+# device with four queues, you must run four net tiles.
+#
+# Net tiles will multiplex in both directions, fanning out packets
+# to multiple parts of Firedancer that can receive and handle them,
+# like QUIC tiles and the Turbine retransmission engine.  Then also
+# fanning in from these various network senders to transmit on the
+# queues we have available.
+[tiles.net]
+# Which interface to bind to for network traffic.  Currently
+# only one interface is supported for networking.  If this is
+# empty, the default is the interface used to route to 8.8.8.8,
+# you can check what this is with `ip route get 8.8.8.8`
+#
+# If developing under a network namespace with [netns] enabled,
+# this should be the same as [development.netns.interface0].
+interface = ""
+
+# Firedancer uses XDP for fast packet processing.  XDP supports
+# two modes, XDP_SKB and XDP_DRV.  XDP_DRV is preferred as it is
+# faster, but is not supported by all drivers.  This argument
+# must be either the string "skb" or the string "drv".  You can
+# also use "generic" here for development environments, but it
+# should not be used in production.
+xdp_mode = "skb"
+
+# XDP has a metadata queue with memory defined by the driver or
+# kernel that is specially mapped into userspace.  With XDP mode
+# XDP_DRV this could be MMIO to a PCIE device, but in SKB it's
+# kernel memory made available to userspace that is copied in
+# and out of the device.
+#
+# This setting defines the size of these metadata queues.  A
+# larger value is probably better if supported by the hardware,
+# as we will drop less packets when bursting in high bandwidth
+# scenarios.
+#
+# TODO: This probably shouldn't be configurable, we should just
+# use the maximum available to the hardware?
+xdp_rx_queue_size = 4096
+xdp_tx_queue_size = 4096
+
+# When writing multiple queue entries to XDP, we may wish to
+# batch them together if it's expensive to do them one at a
+# time.  This might be the case for example if the writes go
+# directly to the network device.  A large batch size may not be
+# ideal either, as it adds latency and jitter to packet
+# handling.
+xdp_aio_depth = 256
+
+# The maximum number of packets in-flight between a net tile and
+# downstream consumers, after which additional packets begin to
+# replace older ones, which will be dropped.  TODO: ... Should
+# this really be configurable?
+send_buffer_size = 16384
+
+# The XDP program will filter packets that aren't destined for
+# the IPv4 address of the interface bound above, but sometimes a
+# validator may advertise multiple IP addresses.  In this case
+# the additional addresses can be specified here, and packets
+# addressed to them will be accepted.
+multihome_ip_addrs = []
+
+# QUIC tiles are responsible for serving network traffic, including
+# parsing and responding to packets and managing connection timeouts
+# and state machines.  These tiles implement the QUIC protocol,
+# along with receiving regular (non-QUIC) UDP transactions, and
+# forward well formed (but not necessarily valid) ones to verify
+# tiles.
+[tiles.quic]
+# Which port to listen on for incoming, regular UDP transactions
+# that are not over QUIC.  These could be votes, user
+# transactions, or transactions forwarded from another
+# validator.
+regular_transaction_listen_port = 9001
+
+# Which port to listen on for incoming QUIC transactions.
+# Currently this must be exactly 6 more than the
+# transaction_listen_port.
+quic_transaction_listen_port = 9007
+
+# Maximum number of simultaneous QUIC connections which can be
+# open.  New connections which would exceed this limit will not
+# be accepted.
+#
+# This must be >= 2 and also a power of 2.
+max_concurrent_connections = 131072
+
+# Controls how much transactions coming in via TPU can be
+# reassembled at the same time.  Reassembly is required for user
+# transactions larger than ca ~1200 bytes, as these arrive
+# fragmented.  This parameter should scale linearly with line
+# rate.  Usually, clients send all fragments at once, such that
+# each reassembly only takes a few microseconds.
+#
+# Higher values reduce TPU packet loss over unreliable networks.
+# If this parameter is set too low, packet loss can cause some
+# large transactions to get dropped.  Must be 2 or larger.
+txn_reassembly_count = 4194304
+
+# QUIC has a handshake process which establishes a secure
+# connection between two endpoints.  The handshake process is
+# very expensive. So we allow only a limited number of
+# handshakes to occur concurrently.
+#
+max_concurrent_handshakes = 4096
+
+# QUIC has a concept of an idle connection, one where neither
+# the client nor the server has sent any packet to the other for
+# a period of time.  Once this timeout is reached the connection
+# will be terminated.
+#
+# An idle connection will be terminated if it remains idle
+# longer than this threshold.
+idle_timeout_millis = 10000
+
+# Max delay for outgoing ACKs.
+ack_delay_millis = 50
+
+# QUIC retry is a feature to combat new connection request
+# spamming.  See rfc9000 8.1.2 for more details.  This flag
+# determines whether the feature is enabled in the validator.
+retry = true
+
+# Verify tiles perform signature verification of incoming
+# transactions, making sure that the data is well-formed, and that
+# it is signed by the appropriate private key.
+[tiles.verify]
+# The verify tiles have a cache of signatures they have seen
+# recently, used to discard duplicate transactions before they
+# get verified to save signature verification resources.  See
+# [tiles.dedup.signature_cache_size] below for more information.
+signature_cache_size = 4194302
+
+# The maximum number of messages in-flight between a QUIC tile
+# and associated verify tile, after which earlier messages might
+# start being overwritten, and get dropped so that the system
+# can keep up.
+receive_buffer_size = 16384
+
+# After being verified, all transactions are sent to a dedup tile to
+# ensure the same transaction is not repeated multiple times.  The
+# dedup tile keeps a rolling history of signatures it has seen and
+# drops any that are duplicated, before forwarding unique ones on.
+[tiles.dedup]
+# The size of the cache that stores unique signatures we have
+# seen to deduplicate.  This is the maximum number of signatures
+# that can be remembered before we will let a duplicate through.
+#
+# If a duplicated transaction is let through, it will waste more
+# resources downstream before we are able to determine that it
+# is invalid and has already been executed.  If a lot of memory
+# is available, it can make sense to increase this cache size to
+# protect against denial of service from high volumes of
+# transaction spam.
+#
+# The default value here, 2^26 - 2 is a good balance, as it fits
+# in 1GiB of memory using a single gigantic page.
+signature_cache_size = 33554430
+
+# The pack tile takes incoming transactions that have been verified
+# by the verify tile and then deduplicated, and attempts to order
+# them in an optimal way to generate the most fees per compute
+# resource used to execute them.
+[tiles.pack]
+# The pack tile receives transactions while it is waiting to
+# become leader and stores them for future execution.  This
+# option determines the maximum number of transactions that
+# will be stored before those with the lowest estimated
+# profitability get dropped.  The maximum allowed, and default
+# value is 65534 and it is not recommended to change this.
+max_pending_transactions = 65534
+
+# When a transaction consumes fewer CUs than it requests, the
+# bank and pack tiles work together to adjust the block limits
+# so that a different transaction can consmume the unspent CUs.
+# This is normally desireable, as it typically leads to
+# producing blocks with more transactions.
+#
+# In situations where transactions typically do not
+# significantly over-request CUs, or when the CU limit is high
+# enough so that over-requesting CUs does not impact how many
+# transactions fit in a block, this can be disabled to improve
+# performance.  It's not recommended (but allowed) to disable
+# this option in a production cluster.
+use_consumed_cus = true
+
+# The bank tile is what executes transactions and updates the
+# accounting state as a result of any operations performed by the
+# transactions.  Currently the bank tile is implemented by the
+# Agave execution engine and is not configurable.
+[tiles.bank]
+
+# The proof of history tile receives transactions from bank tiles
+# and mixes their hashes into a continuous stream of hashes that
+# proves to other validators time is passing.
+[tiles.poh]
+# A validator will always be leader for at least four
+# consecutive slots, which looks like ....
+#
+#   +-------------+----+----+----+----+-------------+
+#   |     ...     | s0 | s1 | s2 | s3 |     ...     |
+#   +-------------+----+----+----+----+-------------+
+#                t0    t1
+#
+# Leader slots are 400 milliseconds, so in a well behaved
+# validator the start time of slot s1 (t1) will be 400
+# milliseconds after s0 (t0).
+#
+# Agave validators start late, at some time t0 + 400 + x, where
+# x is the time it takes the validator to "freeze" slot s0.
+# This is typically around 100 milliseconds, but can be up to
+# 300 or so in degenerate cases.  This is not good for the
+# network because it increases confirmation times and skip
+# rates, but it is beneficial to the individual validator (a
+# tragedy of the commons) because the validator is leader
+# longer, can receive higher paying transactions for longer,
+# and ultimately generate more fees for the operator.
+#
+# Firedancer defaults to matching the Agave behavior here and
+# starting late, but you can disable the option to use a more
+# healthy behavior, where taking a long time to "freeze" slots
+# cuts into your own next slot time, and does not increase it.
+lagged_consecutive_leader_start = true
+
+# The shred tile distributes processed transactions that have been
+# executed to the rest of the cluster in the form of shred packets.
+[tiles.shred]
+# When this validator is not the leader, it receives the most
+# recent processed transactions from the leader and other
+# validators in the form of shred packets.  Shreds are grouped
+# in sets for error correction purposes, and the full validation
+# of a shred packet requires receiving at least half of the set.
+# Since shreds frequently arrive out of order, the shred tile
+# needs a relatively large buffer to hold sets of shreds until
+# they can be fully validated.  This option specifies the size
+# of this buffer.
+#
+# To compute an appropriate value, multiply the expected Turbine
+# worst-case latency (tenths of seconds) by the expected
+# transaction rate, and divide by approx 25.
+max_pending_shred_sets = 512
+
+# The shred tile listens on a specific port for shreds to
+# forward.  This argument controls which port that is.  The port
+# is broadcast over gossip so other validators know how to reach
+# this one.
+shred_listen_port = 8003
+
+# The metric tile receives metrics updates published from the rest
+# of the tiles and serves them via. a Prometheus compatible HTTP
+# endpoint.
+[tiles.metric]
+# The address to listen on.  By default metrics are only
+# accessible from the local machine.  If you wish to expose them
+# to the network, you can change the listen address.
+#
+# The Firedancer team makes a best effort to secure the metrics
+# endpoint but exposing it to the internet from a production
+# validator is not recommended as it increases the attack
+# surface of the validator.
+prometheus_listen_address = "127.0.0.1"
+
+# The port to listen on for HTTP request for Prometheus metrics.
+# Firedancer serves metrics at a URI like 127.0.0.1:7999/metrics
+prometheus_listen_port = 7999
+
+# The gui tile receives data from the validator and serves an HTTP
+# endpoint to clients to view it.
+[tiles.gui]
+# If the GUI is enabled.
+#
+# Names and icons of peer validators will not be displayed in
+# the GUI unless the program-id index is enabled, which can be
+# done by setting
+#
+# [ledger]
+#   account_indexes = ["program-id"]
+#
+# In your configuration above.
+enabled = true
+
+# The address to listen on.  By default, if enabled, the GUI
+# will only be accessible from the local machine.  If you wish
+# to expose it to the network, you can change the listen
+# address.
+#
+# The Firedancer team makes a best effort to secure the GUI
+# endpoint but exposing it to the internet from a production
+# validator is not recommended as it increases the attack
+# surface of the validator.
+gui_listen_address = "127.0.0.1"
+
+# The port to listen on.
+gui_listen_port = 80
+
+# These options can be useful for development, but should not be used
+# when connecting to a live cluster, as they may cause the validator to
+# be unstable or have degraded performance or security.  The program
+# will check that these options are set correctly in production and
+# refuse to start otherwise.
+[development]
+# For enhanced security, Firedancer runs itself in a restrictive
+# sandbox in production.  The sandbox prevents most system calls and
+# restricts the capabilities of the process after initialization to
+# make the attack surface smaller.  This is required in production,
+# but might be too restrictive during development.
+#
+# In development, you can disable the sandbox for testing and
+# debugging with the `--no-sandbox` argument to `fddev`.
+sandbox = true
+
+# As part of the security sandboxing, Firedancer will run every tile
+# in a separate process.  This can be annoying for debugging where
+# you want control of all the tiles under one inferior, so we also
+# support a development mode where tiles are run as threads instead
+# and the system operates inside a single process.  This does not
+# impact performance and threads still get pinned.
+#
+# This option cannot be enabled in production.  In development, you
+# can also launch Firedancer as a single process for with the
+# `--no-clone` argument to `fddev`.
+no_clone = false
+
+# Firedancer currently hosts a Agave client as a child process
+# when it starts up, to provide functionality that has not yet been
+# implemented. For development sometimes it is desirable to not
+# launch this subprocess, although it will prevent the validator
+# from operating correctly.
+#
+# In development, you can disable agave for testing and debugging
+# with the `--no-agave` argument to `fddev`.
+no_agave = false
+
+# Sometimes, it may be useful to run a bootstrap firedancer
+# validator, either for development or for testing purposes.  The
+# `fddev` tool is provided for this purpose, which creates the
+# bootstrap keys and does the cluster genesis using some parameters
+# that are typically useful for development.
+#
+# Enabling this allows de-coupling the genesis and key creation from
+# the validator startup.  The bootstrap validator can then be
+# started up with `fdctl`.  It will expect the genesis to already
+# exist at [ledger.path].  The keys used during genesis should be
+# the same as the ones supplied in the [consensus.identity_path] and
+# [consensus.vote_account_path].  This option will not be effective
+# if [gossip.entrypoints] is non-empty.
+bootstrap = false
+
+# It can be convenient during development to use a network namespace
+# for running Firedancer.  This allows us to send packets at a local
+# Firedancer instance and have them go through more of the kernel
+# XDP stack than would be possible by just using the loopback
+# interface.  We have special support for creating a pair of virtual
+# interfaces that are routable to each other.
+#
+# Because of how Firedancer uses UDP and XDP together, we do not
+# receive packets when binding to the loopback interface.  This can
+# make local development difficult.  Network namespaces are one
+# solution, they allow us to create a pair of virtual interfaces on
+# the machine which can route to each other.
+#
+# If this configuration is enabled, `fdctl dev` will create two
+# network namespaces and a link between them to send packets back
+# and forth.  When this option is enabled, the interface to bind to
+# in the net configuration must be one of the virtual interfaces.
+# Firedancer will be launched by `fdctl` within that namespace.
+#
+# This is a development only configuration, network namespaces are
+# not suitable for production use due to performance overhead.  In
+# development when running with `fddev`, this can also be enabled
+# with the `--netns` command line argument.
+[development.netns]
+# If enabled, `fdctl dev` will ensure the network namespaces are
+# configured properly, can route to each other, and that running
+# Firedancer will run it inside the namespace for interface0
+enabled = false
+
+# Name of the first network namespace.
+interface0 = "veth_test_xdp_0"
+# MAC address of the first network namespace.
+interface0_mac = "52:F1:7E:DA:2C:E0"
+# IP address of the first network namespace.
+interface0_addr = "198.18.0.1"
+
+# Name of the second network namespace.
+interface1 = "veth_test_xdp_1"
+# MAC address of the second network namespace.
+interface1_mac = "52:F1:7E:DA:2C:E1"
+# IP address of the second network namespace.
+interface1_addr = "198.18.0.2"
+
+[development.gossip]
+# Under normal operating conditions, a validator should always
+# reach out to a host located on the public internet.  If this
+# value is true, it allows the validator to gossip with nodes
+# configuration item allows Firedancer to gossip with nodes
+# located on a private internet (rfc1918).
+#
+# This option is passed to the Agave client with the
+# `--allow-private-addr` flag.
+allow_private_address = false
+
+[development.genesis]
+# When creating a new chain from genesis during development,
+# this option can be used to specify the number of hashes in
+# each tick of the proof history component.
+#
+# A value of one is the default, and will be used to mean that
+# the proof of history component will run in low power mode,
+# and use one hash per tick.  This is equivalent to a value of
+# "sleep" when providing hashes-per-tick to the Agave
+# genesis.
+#
+# A value of zero means the genesis will automatically determine
+# the number of hashes in each tick based on how many hashes
+# the generating computer can do in the target tick duration
+# specified below.
+#
+# This value specifies the initial value for the chain in the
+# genesis, but it might be overriden at runtime if the related
+# features which increase this value are enabled. The features
+# are named like `update_hashes_per_tick2`.
+#
+# A value of 62,500 is the same as mainnet-beta, devnet, and
+# testnet, following activation of the `update_hashes_per_tick6`
+# feature.
+hashes_per_tick = 62_500
+
+# How long each tick of the proof of history component should
+# take, in microseconds.  This value specifies the initial value
+# of the chain and it will not change at runtime.  The default
+# value used here is the same as mainnet, devnet, and testnet.
+target_tick_duration_micros = 6250
+
+# The number of ticks in each slot.  This value specifies the
+# initial value of the chain and it will not change at runtime.
+# The default value used here is the same as mainnet, devnet,
+# and testnet.
+ticks_per_slot = 64
+
+# The count of accounts to pre-fund in the genesis block with
+# SOL.  Useful for benchmarking and development.  The specific
+# accounts that will be funded are those with private-keys of
+# 0, 1, 2, .... N.
+fund_initial_accounts = 1024
+
+# The amount of SOL to pre-fund each account with.
+fund_initial_amount_lamports = 50000000000000
+
+# The number of lamports to stake on the voting account of the
+# validator that starts up from the genesis.  Genesis creation
+# will fund the staking account passed to it with this amount
+# and then stake it on the voting account.  Note that the voting
+# account key used in the genesis needs to be the same as the
+# one that is used by the bootstrap validator.
+vote_account_stake_lamports = 500000000
+
+# Setting warmup epochs to true will allow shorter epochs towards
+# the beginning of the cluster.  This allows for faster stake
+# activation.  The first epoch will be 32 slots long and the
+# duration of each subsequent epoch will be double that of the
+# one before it until it reaches the desired epoch duration of the
+# cluster.
+warmup_epochs = false
+
+[development.bench]
+# How many benchg tiles to run when benchmarking.  benchg tiles
+# are responsible for generating and signing outgoing
+# transactions to the validator which is expensive.
+benchg_tile_count = 4
+
+# How many benchs tiles to run when benchmarking.  benchs tiles
+# are responsible for sending transactions to the validator, for
+# example by calling send() on a socket.  On loopback, a single
+# benchs tile can send around 320k packets a second.
+benchs_tile_count = 2
+
+# Which cores to run the benchmarking tiles on.  By default the
+# cores will be floating but to get good performance
+# measurements on your machine, you should create a topology
+# where these generators get their own cores.
+#
+# The tiles included in this affinity are,
+#
+#      bencho, benchg1, .... benchgN, benchs1, ... benchsN
+#
+# If the [layout.affinity] above is set to "auto" then this
+# value must also be set to "auto" and it will be determined
+# automatically.
+affinity = "auto"
+
+# Solana has a hard-coded maximum CUs per block limit of
+# 48,000,000 which works out to around 80,000 transfers a
+# second, since each consumes about 1500 CUs.  When
+# benchmarking, this can be the limiting bottleneck of the
+# system, so this option is provided to raise the limit.  If set
+# to true, the limit will be lifted to 624,000,000 for a little
+# over 1 million transfers per second.
+#
+# This option should not be used in production, and would cause
+# consensus violations and a consensus difference between the
+# validator and the rest of the network.
+larger_max_cost_per_block = false
+
+# Solana has a consensus-agreed-upon limit of 32,768 data and
+# parity shreds per block.  This limit prevents a malicious (or
+# mistaken) validator from slowing down the network by producing
+# a huge block.  When benchmarking, this limit can be the
+# bottleneck of the whole system, so this option is provided to
+# raise the limit.  If set to true, the limit will be raised to
+# 131,072 data and parity shreds per block, for about 1,200,000
+# small transactions per second.
+#
+# This option should not be used in a production network, since
+# it would cause consensus violations between the validator and
+# the rest of the network.
+larger_shred_limits_per_block = false
+
+# Frankendancer currently depends on the Agave blockstore
+# component for storing block data to disk.  This component can
+# frequently be a bottleneck when testing the throughput of the
+# leader pipeline, so this option is provided to disable it
+# starting from a certain slot.
+#
+# This option should not be used in a production network; it
+# causes the validator to not be able to serve repair requests,
+# snapshots, or participate in other consensus critical
+# operations.  It is only useful for benchmarking the leader
+# TPU performance in a single node cluster case.
+#
+# A value of 0 means this option will not be used.  A value of 1
+# disables the blockstore entirely.  A common use case for any
+# other positive value is to create a snapshot before disabling
+# the blockstore.  This is useful in cases when benchmarking an
+# entire cluster.  The leader needs to create a first snapshot
+# that the followers need to fetch in order to join the cluster.
+# In such a case, it is useful to set this value to the same
+# number as [snapshots.full_snapshot_interval_slots].
+disable_blockstore_from_slot = 0
+
+# Frankendancer currently depends on the Agave status cache to
+# prevent double-spend attacks.  The data structure that backs
+# the Agave status cache frequently causes lots of page faults
+# and contention during benchmarking.  It severely limits
+# banking stage scalability, so this option is provided to
+# disable it.
+#
+# This option should not be used in a production network.  If
+# set to true, Frankendancer will not be able to identify a
+# transaction it has receieved as a duplicate if it occurred in
+# another leader's block, causing it to produce invalid blocks.
+# It is only useful for benchmarking when it is known that
+# duplicate transactions will not be submitted and the validator
+# with this option enabled will always be leader.
+disable_status_cache = false
